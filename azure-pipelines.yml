@@ -1,40 +1,68 @@
 # azure-pipelines.yml
 trigger:
-- main
+  branches:
+    include:
+      - main
 
+# Use your self-hosted agent pool for ALL stages/jobs
 pool:
-  name: 'asd3'
+  name: asd3
 
 stages:
+# ---------- BUILD ----------
 - stage: Build
   displayName: Build
   jobs:
   - job: build
+    displayName: Build on self-hosted
     steps:
     - checkout: self
+
+    # TODO: replace with your real build
     - script: |
         echo "Run your build here"
         # e.g., npm ci && npm run build
       displayName: Build app
-    - publish: $(System.DefaultWorkingDirectory)
-      artifact: drop
 
+    # Archive build output to a single zip (adjust the folder you want to deploy)
+    - task: ArchiveFiles@2
+      displayName: Archive build output
+      inputs:
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/drop.zip'
+        replaceExistingArchive: true
+
+    # Publish the zip as a pipeline artifact named "drop"
+    - task: PublishBuildArtifacts@1
+      displayName: Publish artifact (drop.zip)
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/drop.zip'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
+# ---------- DEPLOY ----------
 - stage: Deploy
   displayName: Deploy
   dependsOn: Build
   jobs:
   - deployment: DeployToDev
     displayName: Deploy to Dev
-    environment: 'asd3'           # << must match the Environment name
+    environment: 'asd3'                 # must match your Environment name
     strategy:
       runOnce:
         deploy:
           steps:
+          # Download the "drop" artifact produced above
           - download: current
             artifact: drop
-          # Example: deploy to Azure Web App (replace with your target)
+
+          # Deploy the zip to Azure Web App via your service connection
           - task: AzureWebApp@1
+            displayName: Deploy to Azure Web App
             inputs:
-              azureSubscription: 'sc-azure-sp'   # your service connection
-              appName: 'my-webapp-name'
-              package: '$(Pipeline.Workspace)/drop/**.zip'
+              azureSubscription: 'sc-azure-sp'      # service connection name
+              appType: 'webAppLinux'                # or 'webApp' for Windows
+              appName: 'my-webapp-name'             # <-- replace with your App Service name
+              package: '$(Pipeline.Workspace)/drop/drop.zip'
