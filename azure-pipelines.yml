@@ -25,7 +25,7 @@ stages:
   jobs:
   - deployment: DeployToDev
     displayName: Deploy to Dev
-    environment: 'ASD3 Deployment'           # << must match the Environment name
+    environment: 'asd3'           # << must match the Environment name
     strategy:
       runOnce:
         deploy:
