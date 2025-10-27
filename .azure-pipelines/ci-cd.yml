@@ -5,12 +5,12 @@ trigger:
     include: [ main ]        # change if your default branch isn’t main
 
 variables:
-  pythonVersion: '3.9'
-  webAppName: 'web-incident-prod'          # 👈 your Web App name
-  azureServiceConnection: 'AZURERM_SC'     # 👈 your service connection name
+  pythonVersion: '3.11'                   # moved to 3.11 to satisfy Django 5.2.x
+  webAppName: 'web-incident-prod'         # your Web App name
+  azureServiceConnection: 'AZURERM_SC'    # your service connection name
   packageName: '$(Build.BuildId).zip'
 
-# 👇 Run on your Windows self-hosted agent
+# Use your self-hosted agent pool
 pool:
   name: 'SelfHosted'
 
@@ -23,13 +23,20 @@ stages:
     steps:
     - checkout: self
 
-    # Use system Python (installed on your agent)
+    # Provision Python 3.11 on the agent for this job
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+
+    # Install deps with python -m pip (works with any PATH)
     - script: |
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
       displayName: 'Install dependencies'
 
-    # Optional: collect static files if your app needs them
+    # Optional: collect static files if needed
     # - script: python manage.py collectstatic --noinput
     #   displayName: 'Collect static files'
 
