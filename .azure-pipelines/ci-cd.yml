@@ -1,0 +1,71 @@
+# CI/CD for Django (a_core) → Azure Web App (Linux)
+trigger:
+  branches:
+    include: [ main ]   # 👈 change if your default branch isn't 'main'
+
+variables:
+  pythonVersion: '3.9'
+  webAppName: 'WEB_APP_NAME_HERE'         # 👈 e.g. web-incident-prod
+  azureServiceConnection: 'AZURERM_SC'    # matches your service connection name
+  packageName: '$(Build.BuildId).zip'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build & Package
+  jobs:
+  - job: build
+    steps:
+    - checkout: self
+
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      displayName: 'Install dependencies'
+
+    # Optional: collect static if you serve from the app
+    # - script: python manage.py collectstatic --noinput
+    #   displayName: 'Collect static'
+
+    - task: ArchiveFiles@2
+      displayName: 'Archive source'
+      inputs:
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(packageName)'
+        replaceExistingArchive: true
+
+    - publish: '$(Build.ArtifactStagingDirectory)/$(packageName)'
+      artifact: drop
+      displayName: 'Publish artifact'
+
+- stage: Deploy
+  displayName: Deploy to Azure Web App
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: deploy
+    environment: 'prod'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            displayName: 'Deploy to $(webAppName)'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              appType: 'webAppLinux'
+              appName: '$(webAppName)'
+              package: '$(Pipeline.Workspace)/drop/$(packageName)'
+              startupCommand: 'gunicorn --bind=0.0.0.0:8000 a_core.wsgi:application'
