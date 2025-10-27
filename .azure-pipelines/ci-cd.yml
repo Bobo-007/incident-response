@@ -1,16 +1,18 @@
-# CI/CD for Django (a_core) → Azure Web App (Linux)
+# Azure DevOps CI/CD for Django (a_core) → Azure Web App (Linux)
+
 trigger:
   branches:
-    include: [ main ]   # 👈 change if your default branch isn't 'main'
+    include: [ main ]        # change if your default branch isn’t main
 
 variables:
   pythonVersion: '3.9'
-  webAppName: 'WEB_APP_NAME_HERE'         # 👈 e.g. web-incident-prod
-  azureServiceConnection: 'AZURERM_SC'    # matches your service connection name
+  webAppName: 'web-incident-prod'          # 👈 your Web App name
+  azureServiceConnection: 'AZURERM_SC'     # 👈 your service-connection name
   packageName: '$(Build.BuildId).zip'
 
+# 👇 Use your self-hosted agent pool
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'SelfHosted'
 
 stages:
 - stage: Build
@@ -20,19 +22,14 @@ stages:
     steps:
     - checkout: self
 
-    - task: UsePythonVersion@0
-      displayName: 'Use Python $(pythonVersion)'
-      inputs:
-        versionSpec: '$(pythonVersion)'
-
     - script: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
       displayName: 'Install dependencies'
 
-    # Optional: collect static if you serve from the app
+    # Optional: collect static files
     # - script: python manage.py collectstatic --noinput
-    #   displayName: 'Collect static'
+    #   displayName: 'Collect static files'
 
     - task: ArchiveFiles@2
       displayName: 'Archive source'
