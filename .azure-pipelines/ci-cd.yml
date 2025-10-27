@@ -16,16 +16,24 @@ pool:
 
 stages:
 - stage: Build
-  displayName: Build & Package
   jobs:
   - job: build
     steps:
     - checkout: self
 
+    # NEW: provision Python on the agent
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.9'
+      inputs:
+        versionSpec: '3.9'
+        addToPath: true
+
+    # UPDATED: use python -m pip so it's guaranteed to work
     - script: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        python -m pip install -r requirements.txt
       displayName: 'Install dependencies'
+
 
     # Optional: collect static files
     # - script: python manage.py collectstatic --noinput
