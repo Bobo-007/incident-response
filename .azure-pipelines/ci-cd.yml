@@ -7,35 +7,29 @@ trigger:
 variables:
   pythonVersion: '3.9'
   webAppName: 'web-incident-prod'          # 👈 your Web App name
-  azureServiceConnection: 'AZURERM_SC'     # 👈 your service-connection name
+  azureServiceConnection: 'AZURERM_SC'     # 👈 your service connection name
   packageName: '$(Build.BuildId).zip'
 
-# 👇 Use your self-hosted agent pool
+# 👇 Run on your Windows self-hosted agent
 pool:
   name: 'SelfHosted'
 
 stages:
 - stage: Build
+  displayName: Build & Package
   jobs:
   - job: build
+    displayName: Build
     steps:
     - checkout: self
 
-    # NEW: provision Python on the agent
-    - task: UsePythonVersion@0
-      displayName: 'Use Python 3.9'
-      inputs:
-        versionSpec: '3.9'
-        addToPath: true
-
-    # UPDATED: use python -m pip so it's guaranteed to work
+    # Use system Python (installed on your agent)
     - script: |
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
       displayName: 'Install dependencies'
 
-
-    # Optional: collect static files
+    # Optional: collect static files if your app needs them
     # - script: python manage.py collectstatic --noinput
     #   displayName: 'Collect static files'
 
